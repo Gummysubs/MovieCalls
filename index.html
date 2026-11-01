@@ -3,151 +3,458 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movie Call - Zoom & Talkroom Mix</title>
-    <!-- Include PeerJS for free, unlimited video call rooms -->
+    <title>Movie Call - Premium Theater</title>
+    <!-- PeerJS for free peer-to-peer streaming -->
     <script src="https://unpkg.com"></script>
     <!-- Tailwind CSS for styling -->
     <script src="https://jsdelivr.net"></script>
     <style>
         body {
-            background-color: #0d1117;
-            color: #c9d1d9;
+            background: linear-gradient(180deg, #1a0f05 0%, #0a0501 100%);
+            color: #f3eade;
             font-family: system-ui, -apple-system, sans-serif;
         }
         /* Custom scrollbar for chat */
         ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #161b22; }
-        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+        ::-webkit-scrollbar-track { background: #140b03; }
+        ::-webkit-scrollbar-thumb { background: #b8860b; border-radius: 3px; }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col overflow-hidden m-0 p-0">
+<body class="h-screen w-screen flex flex-col overflow-hidden m-0 p-0 select-none">
 
-    <!-- ================= 1. ENTRY SCREEN (Talkroom Style) ================= -->
-    <div id="entry-screen" class="flex-1 flex flex-col items-center justify-center p-4">
-        <div class="bg-[#161b22] border border-[#30363d] p-8 rounded-xl w-full max-w-md shadow-2xl space-y-6">
-            <div class="text-center">
-                <h1 class="text-3xl font-bold text-white tracking-tight">Movie Call</h1>
-                <p class="text-sm text-gray-400 mt-2">The Ultimate Watch Party & Video Chat Room</p>
+    <!-- ================= 1. PREMIUM THEATER ENTRY SCREEN ================= -->
+    <div id="entry-screen" class="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
+        <div class="w-full max-w-sm text-center space-y-6">
+            <div>
+                <h1 class="text-4xl font-black text-amber-500 tracking-wider uppercase">Movie Call</h1>
+                <p class="text-sm text-amber-200/60 mt-1 font-medium tracking-wide">Face-to-face calls with a shared big screen.</p>
             </div>
 
-            <!-- Profile Customization -->
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Your Name</label>
-                    <input type="text" id="username-input" placeholder="Enter your display name..." 
-                           class="w-full bg-[#0d1117] border border-[#30363d] text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500">
+            <!-- Profile Picture/GIF Circle Upload Frame -->
+            <div class="flex flex-col items-center justify-center space-y-2">
+                <div onclick="triggerAvatarUpload()" class="w-28 h-28 rounded-full border-2 border-dashed border-amber-500/40 bg-[#26170c] flex flex-col items-center justify-center cursor-pointer hover:border-amber-500 transition relative overflow-hidden group shadow-lg shadow-black">
+                    <img id="avatar-preview" src="" class="absolute inset-0 w-full h-full object-cover hidden">
+                    <div id="upload-placeholder" class="flex flex-col items-center text-amber-400/70 group-hover:text-amber-400">
+                        <span class="text-2xl">📷</span>
+                        <span class="text-[11px] font-semibold mt-1">Upload profile picture / GIF</span>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Profile Picture (Image or GIF Link)</label>
-                    <input type="text" id="avatar-input" placeholder="Paste image/GIF URL (or leave blank for default)..." 
-                           class="w-full bg-[#0d1117] border border-[#30363d] text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500">
-                </div>
+                <!-- Hidden file input to handle device images/gifs -->
+                <input type="file" id="file-input" accept="image/*" class="hidden" onchange="processAvatarFile(event)">
             </div>
 
-            <div class="border-t border-[#30363d] my-4"></div>
+            <!-- Inputs Box -->
+            <div class="space-y-3 pt-2">
+                <input type="text" id="username-input" placeholder="Username" 
+                       class="w-full bg-[#26170c] border border-amber-600/30 text-white placeholder-amber-200/30 px-5 py-3.5 rounded-xl text-center focus:outline-none focus:border-amber-500 font-medium">
+                
+                <input type="text" id="room-id-input" placeholder="ROOM CODE" 
+                       class="w-full bg-[#26170c] border border-amber-600/30 text-white placeholder-amber-200/30 px-5 py-3.5 rounded-xl text-center focus:outline-none focus:border-amber-500 font-bold uppercase tracking-widest">
+            </div>
 
-            <!-- Room Choice Buttons -->
-            <div class="grid grid-cols-2 gap-4">
-                <button onclick="showRoomOption('create')" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition duration-200 cursor-pointer">
-                    Host Room
+            <!-- Action Controllers -->
+            <div class="space-y-3 pt-2">
+                <button onclick="launchTheaterSession(true)" class="w-full bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-[#1a0f05] font-bold py-4 rounded-xl shadow-lg transition duration-150 uppercase tracking-wider cursor-pointer">
+                    Host Movie Theater
                 </button>
-                <button onclick="showRoomOption('join')" class="bg-[#21262d] hover:bg-[#30363d] text-white font-medium py-2.5 px-4 rounded-lg border border-[#30363d] transition duration-200 cursor-pointer">
-                    Join Room
-                </button>
-            </div>
-
-            <!-- Contextual Input Fields -->
-            <div id="room-action-container" class="hidden space-y-3 pt-2">
-                <div>
-                    <label id="room-label" class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Room Code</label>
-                    <input type="text" id="room-id-input" placeholder="e.g., chill-zone-123" 
-                           class="w-full bg-[#0d1117] border border-[#30363d] text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-blue-500">
-                </div>
-                <button id="submit-room-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-semibold py-3 rounded-lg shadow-md transition duration-200 mt-2 cursor-pointer">
-                    Launch App
+                <button onclick="launchTheaterSession(false)" class="w-full bg-[#2a1b10] hover:bg-[#382516] text-amber-400 font-semibold py-3.5 rounded-xl border border-amber-600/20 transition duration-150 cursor-pointer text-sm">
+                    Join Existing Room
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- ================= 2. MAIN APP DASHBOARD ================= -->
-    <div id="app-dashboard" class="hidden flex-1 flex flex-col md:flex-row overflow-hidden">
+    <!-- ================= 2. LIVE APPi DASHBOARD LAYOUT ================= -->
+    <div id="app-dashboard" class="hidden切换 flex-1 flex flex-col md:flex-row overflow-hidden">
         
-        <!-- Main Content Area: Left / Top (Shared TV Screen + Zoom Grid) -->
+        <!-- Left Stream Content Frame -->
         <div class="flex-1 flex flex-col overflow-y-auto p-4 space-y-4">
             
-            <!-- Virtual TV Monitor Panel -->
-            <div class="w-full bg-[#161b22] border border-[#30363d] rounded-xl overflow-hidden shadow-xl aspect-video max-h-[50vh] relative group">
-                <!-- Fallback/Standby View -->
-                <div id="tv-standby" class="absolute inset-0 flex flex-col items-center justify-center bg-black z-10">
-                    <div class="w-16 h-16 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin mb-4 hidden" id="tv-loading-spinner"></div>
-                    <p class="text-gray-400 text-lg font-medium tracking-wide" id="tv-status-text">📺 Main TV Screen: Standing By for Link...</p>
+            <!-- Virtual TV Theater Monitor -->
+            <div class="w-full bg-black border border-amber-600/20 rounded-2xl overflow-hidden shadow-2xl aspect-video max-h-[50vh] relative group">
+                <div id="tv-standby" class="absolute inset-0 flex flex-col items-center justify-center bg-[#0d0703] z-10 text-center p-4">
+                    <span class="text-4xl mb-2">🎬</span>
+                    <p class="text-amber-200/50 text-base font-medium tracking-wide">Paste a video link below to start the show</p>
                 </div>
                 
-                <!-- Shared Video Player/Iframe Area -->
-                <div id="tv-player-container" class="w-full h-full bg-black">
-                    <!-- Dynamic iFrame injected here securely via JavaScript -->
-                </div>
+                <!-- Main Iframe Video Frame -->
+                <div id="tv-player-container" class="w-full h-full"></div>
             </div>
 
-            <!-- Zoom Video Call Mesh Grid -->
-            <div id="video-grid" class="flex-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 auto-rows-fr min-h-[250px]">
-                <!-- Local Video Player Card -->
-                <div class="bg-[#161b22] border border-blue-500/40 rounded-xl relative overflow-hidden group shadow-lg flex flex-col items-center justify-center">
-                    <video id="local-video" autoplay muted playsinline class="w-full h-full object-cover rounded-xl absolute inset-0 z-0"></video>
-                    <!-- Custom Profile Override Display Layer -->
-                    <div id="local-avatar-bg" class="absolute inset-0 bg-[#161b22] flex flex-col items-center justify-center z-10 hidden">
-                        <img id="local-avatar-img" src="https://unsplash.com" 
-                             class="w-24 h-24 rounded-full border-4 border-[#30363d] object-cover shadow-inner">
+            <!-- Host Video Dynamic Sync Controls Bar -->
+            <div id="host-sync-controls" class="hidden bg-[#21140a] border border-amber-600/20 p-3 rounded-xl flex items-center justify-center space-x-4 shadow-md">
+                <span class="text-xs font-bold text-amber-400 uppercase tracking-wider">Host Controls:</span>
+                <button onclick="sendPlaybackSignal('play')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer">▶ Play for Everyone</button>
+                <button onclick="sendPlaybackSignal('pause')" class="bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition cursor-pointer">⏸ Pause for Everyone</button>
+            </div>
+
+            <!-- Face-to-Face Video Call Grid (Zoom Grid style) -->
+            <div id="video-grid" class="flex-1 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 auto-rows-fr min-h-[200px]">
+                <!-- Local Self User Card -->
+                <div class="bg-[#1f1208] border border-amber-500/30 rounded-xl relative overflow-hidden shadow-xl flex items-center justify-center aspect-video">
+                    <video id="local-video" autoplay muted playsinline class="w-full h-full object-cover absolute inset-0 z-0"></video>
+                    <!-- Avatar Fallback -->
+                    <div id="local-avatar-bg" class="absolute inset-0 bg-[#1f1208] flex items-center justify-center z-10">
+                        <div class="w-20 h-20 rounded-full bg-amber-900/40 border-2 border-amber-500 flex items-center justify-center text-amber-500 font-black text-2xl uppercase shadow-md shadow-black" id="local-initials">M</div>
                     </div>
-                    
-                    <div class="absolute bottom-2 left-2 right-2 bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-lg flex items-center justify-between z-20 text-xs border border-[#30363d]">
-                        <span id="local-name-tag" class="font-medium text-white truncate">You (Host)</span>
-                        <div class="flex items-center space-x-1">
-                            <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30">Host</span>
-                        </div>
+                    <!-- Overlay Tag info -->
+                    <div class="absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg flex items-center justify-between z-20 text-xs border border-amber-600/20">
+                        <span id="local-name-tag" class="font-bold text-amber-200 truncate">You</span>
+                        <span id="local-role-badge" class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30 text-[10px]">Guest</span>
                     </div>
                 </div>
-                <!-- Guest video tracks get appended dynamically here -->
             </div>
         </div>
 
-        <!-- Right Side Panel: Host Controls, Video Launcher, and Text Chat -->
-        <div class="w-full md:w-80 bg-[#161b22] border-t md:border-t-0 md:border-l border-[#30363d] flex flex-col overflow-hidden shadow-2xl">
+        <!-- Right Panels: Streams launcher + Messenger System -->
+        <div class="w-full md:w-80 bg-[#140b03] border-t md:border-t-0 md:border-l border-amber-600/10 flex flex-col overflow-hidden shadow-2xl">
             
-            <!-- Video Control Bar (Media Stream Controller) -->
-            <div class="p-4 border-b border-[#30363d] space-y-3">
-                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Sync Video Link</h3>
+            <!-- Video URL Link Control Center -->
+            <div class="p-4 border-b border-amber-600/10 space-y-2.5">
+                <h3 class="text-xs font-bold text-amber-400/60 uppercase tracking-wider">Stream to Room</h3>
                 <div class="flex space-x-2">
-                    <input type="text" id="media-link-input" placeholder="Paste YouTube link here..." 
-                           class="flex-1 bg-[#0d1117] border border-[#30363d] text-white px-3 py-1.5 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                    <button onclick="broadcastMediaStream()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-4 rounded-lg transition cursor-pointer">
-                        Sync
+                    <input type="text" id="media-link-input" placeholder="Paste video link here..." 
+                           class="flex-1 bg-[#21140a] border border-amber-600/20 text-white placeholder-amber-200/20 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+                    <button onclick="broadcastMediaStream()" class="bg-amber-500 hover:bg-amber-600 text-[#1a0f05] font-bold text-xs px-3 rounded-lg transition cursor-pointer">
+                        Stream
                     </button>
                 </div>
             </div>
 
-            <!-- In-App Group Messenger Chat Box -->
-            <div class="flex-1 flex flex-col overflow-hidden">
-                <div class="px-4 py-2 border-b border-[#30363d] flex items-center justify-between bg-[#0d1117]/30">
-                    <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Live Chat Room</span>
-                    <span id="room-display-tag" class="text-xs text-blue-400 font-mono bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20"></span>
+            <!-- Group Chat Feed Area -->
+            <div class="flex-1 flex flex-col overflow-hidden bg-[#0d0703]/40">
+                <div class="px-4 py-2.5 border-b border-amber-600/10 flex items-center justify-between bg-[#140b03]">
+                    <span class="text-xs font-bold text-amber-400/60 uppercase tracking-wider">Live Chat Room</span>
+                    <span id="room-display-tag" class="text-[10px] text-amber-400 font-mono bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 font-bold"></span>
                 </div>
-                <!-- Chat Feed -->
-                <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-3 text-sm">
-                    <div class="text-xs text-gray-500 italic text-center">Welcome to the Room. Type a message below to chat without interrupting the audio!</div>
+                <!-- Chat Feed Messages -->
+                <div id="chat-messages" class="flex-1 p-4 overflow-y-auto space-y-2.5 text-xs">
+                    <div class="text-[11px] text-amber-200/30 italic text-center">Welcome to the theater chat! Type below to chat without interrupting the movie audio.</div>
                 </div>
-                <!-- Chat Entry Form -->
-                <div class="p-4 border-t border-[#30363d] bg-[#0d1117]/50">
+                <!-- Message Inputs Form -->
+                <div class="p-3 border-t border-amber-600/10 bg-[#140b03]">
                     <div class="flex space-x-2">
                         <input type="text" id="chat-input" placeholder="Type a message..." 
-                               class="flex-1 bg-[#0d1117] border border-[#30363d] text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-                        <button onclick="sendChatMessage()" class="bg-[#21262d] hover:bg-[#30363d] border border-[#30363d] text-white px-4 rounded-lg transition cursor-pointer">
-                            Send
-                        </button>
-                    </div>
-                </div>
-            </div>
+                               class="flex-1 bg-[#21140a] border border-amber-600/20 text-white placeholder-amber-200/20 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-amber-500">
+Send
 
-            <!-- Bottom Media Controller Footprint -->
-            <div class="p-4 border-t border-[#30363d] bg-[#0d1117] flex justify-center space-x-4">
+
+
+📹 Cam On
+🎙️ Mic On
+
+
+let isHost = false;
+let myRoomId = "";
+let myUsername = "Anonymous";
+let myAvatarDataUrl = "";
+let localStream = null;
+let peerInstance = null;
+let networkConnections = [];
+let activeVideoTracks = {};
+let camState = false;
+let micState = true;
+// Trigger local phone file selector
+function triggerAvatarUpload() {
+document.getElementById('file-input').click();
+}
+// Process picture or downloaded GIF file straight from phone storage
+function processAvatarFile(event) {
+const file = event.target.files[0];
+if (file) {
+const reader = new FileReader();
+reader.onload = function(e) {
+myAvatarDataUrl = e.target.result;
+const preview = document.getElementById('avatar-preview');
+const placeholder = document.getElementById('upload-placeholder');
+preview.src = myAvatarDataUrl;
+preview.classList.remove('hidden');
+placeholder.classList.add('hidden');
+};
+reader.readAsDataURL(file);
+}
+}
+// Initialize core application room pipeline setup
+async function launchTheaterSession(hostMode) {
+isHost = hostMode;
+myUsername = document.getElementById('username-input').value.trim() || "User_" + Math.floor(Math.random() * 100);
+myRoomId = document.getElementById('room-id-input').value.trim().toLowerCase();
+if (!myRoomId) {
+alert("Please enter a Room Code first!");
+return;
+}
+// Set up local text tags and initials fallback layout
+document.getElementById('local-initials').innerText = myUsername.charAt(0);
+document.getElementById('local-name-tag').innerText = myUsername;
+if (isHost) {
+document.getElementById('local-role-badge').innerText = "👑 Host";
+document.getElementById('local-role-badge').className = "px-1.5 py-0.5 rounded bg-amber-500 text-[#1a0f05] font-black border border-amber-400 text-[10px]";
+document.getElementById('host-sync-controls').classList.remove('hidden');
+} else {
+document.getElementById('local-role-badge').innerText = "Guest";
+}
+if (myAvatarDataUrl) {
+document.getElementById('local-avatar-bg').innerHTML = <img src="${myAvatarDataUrl}" class="w-full h-full object-cover">;
+}
+// Grab audio devices cleanly using explicit high performance gain overrides
+try {
+localStream = await navigator.mediaDevices.getUserMedia({
+video: false, // Default camera off on entry just like Lovable app launcher
+audio: { autoGainControl: false, echoCancellation: true, noiseSuppression: true }
+});
+updateLocalUiControls();
+} catch (err) {
+console.warn("Audio hardware capture standby.", err);
+micState = false;
+updateLocalUiControls();
+}
+// Open Peer Connection Mesh Routing strings
+const identityString = isHost ? moviecall-room-${myRoomId} : peer-${Math.random().toString(36).substr(2, 9)};
+peerInstance = new Peer(identityString);
+peerInstance.on('open', () => {
+document.getElementById('entry-screen').className = "hidden";
+document.getElementById('app-dashboard').className = "flex-1 flex flex-col md:flex-row overflow-hidden";
+document.getElementById('room-display-tag').innerText = ROOM: ${myRoomId.toUpperCase()};
+if (!isHost) {
+connectToHostRoomSignature();
+} else {
+appendSystemMessage("Success! Theater created. Share your Room Code with friends.");
+}
+});
+peerInstance.on('call', (incomingCall) => {
+incomingCall.answer(localStream);
+incomingCall.on('stream', (remoteStream) => {
+handleIncomingVideoStream(incomingCall.peer, remoteStream);
+});
+});
+peerInstance.on('connection', (dataChannel) => {
+handleIncomingDataChannel(dataChannel);
+});
+}
+function connectToHostRoomSignature() {
+const hostTargetId = moviecall-room-${myRoomId};
+const dataChannel = peerInstance.connect(hostTargetId, {
+metadata: { username: myUsername, avatar: myAvatarDataUrl, isHost: false }
+});
+handleIncomingDataChannel(dataChannel);
+if (localStream) {
+const call = peerInstance.call(hostTargetId, localStream);
+call.on('stream', (remoteStream) => {
+handleIncomingVideoStream(hostTargetId, remoteStream);
+});
+}
+}
+function handleIncomingDataChannel(channel) {
+networkConnections.push(channel);
+channel.on('open', () => {
+channel.send({ type: 'profile-sync', user: myUsername, avatar: myAvatarDataUrl, hostFlag: isHost });
+});
+channel.on('data', (packet) => {
+switch(packet.type) {
+case 'chat-message':
+appendChatMessage(packet.user, packet.text, packet.isHostSender);
+break;
+case 'media-sync':
+executeTvDisplaySynchronization(packet.url);
+break;
+case 'playback-control':
+controlEmbeddedVideoPlayback(packet.action);
+break;
+case 'profile-sync':
+registerPeerIdentityMeta(channel.peer, packet);
+break;
+case 'host-moderation-kick':
+if (packet.targetPeer === peerInstance.id) {
+alert("You have been removed from the session by the host.");
+location.reload();
+}
+break;
+}
+});
+}
+function handleIncomingVideoStream(peerId, remoteStream) {
+if (activeVideoTracks[peerId]) return;
+const grid = document.getElementById('video-grid');
+const card = document.createElement('div');
+card.id = card-${peerId};
+card.className = "bg-[#1f1208] border border-amber-600/10 rounded-xl relative overflow-hidden shadow-xl flex items-center justify-center aspect-video";
+const video = document.createElement('video');
+video.autoplay = true;
+video.playsinline = true;
+video.srcObject = remoteStream;
+video.className = "w-full h-full object-cover absolute inset-0 z-0";
+const avatarBg = document.createElement('div');
+avatarBg.id = avatar-bg-${peerId};
+avatarBg.className = "absolute inset-0 bg-[#1f1208] flex items-center justify-center z-10";
+avatarBg.innerHTML = <div class="w-20 h-20 rounded-full bg-amber-900/20 border border-amber-500/30 flex items-center justify-center text-amber-500 font-bold text-xl uppercase" id="initials-${peerId}">?</div>;
+const overlay = document.createElement('div');
+overlay.className = "absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-md px-3 py-1.5 rounded-lg flex items-center justify-between z-20 text-xs border border-amber-600/20";
+const nameTag = document.createElement('span');
+nameTag.id = name-tag-${peerId};
+nameTag.className = "font-bold text-amber-200 truncate";
+nameTag.innerText = "Guest";
+const roleBadge = document.createElement('span');
+roleBadge.id = badge-${peerId};
+roleBadge.className = "px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400 font-bold text-[10px] border border-amber-500/20";
+roleBadge.innerText = "Guest";
+const tray = document.createElement('div');
+tray.className = "flex items-center space-x-1";
+tray.appendChild(roleBadge);
+if (isHost) {
+const kickBtn = document.createElement('button');
+kickBtn.innerText = "🥾 Kick";
+kickBtn.className = "ml-1.5 px-1.5 py-0.5 rounded bg-rose-600/20 text-rose-400 border border-rose-500/30 text-[10px] font-bold cursor-pointer hover:bg-rose-600/40";
+kickBtn.onclick = () => {
+networkConnections.forEach(c => { if(c.open) c.send({type:'host-moderation-kick', targetPeer: peerId}) });
+card.remove();
+};
+tray.appendChild(kickBtn);
+}
+overlay.appendChild(nameTag);
+overlay.appendChild(tray);
+card.appendChild(video);
+card.appendChild(avatarBg);
+card.appendChild(overlay);
+grid.appendChild(card);
+activeVideoTracks[peerId] = card;
+}
+function registerPeerIdentityMeta(peerId, meta) {
+setTimeout(() => {
+const nameTag = document.getElementById(name-tag-${peerId});
+const avatarBg = document.getElementById(avatar-bg-${peerId});
+const badge = document.getElementById(badge-${peerId});
+const initials = document.getElementById(initials-${peerId});
+if (nameTag) nameTag.innerText = meta.user;
+if (initials) initials.innerText = meta.user.charAt(0);
+if (meta.hostFlag && badge) {
+badge.innerText = "👑 Host";
+badge.className = "px-1.5 py-0.5 rounded bg-amber-500 text-[#1a0f05] font-black border border-amber-400 text-[10px]";
+}
+if (meta.avatar && avatarBg) {
+avatarBg.innerHTML = <img src="${meta.avatar}" class="w-full h-full object-cover">;
+}
+}, 800);
+}
+// Shared Virtual Screen Controller & URL Conversion Engine
+function broadcastMediaStream() {
+const urlInput = document.getElementById('media-link-input');
+const targetUrl = urlInput.value.trim();
+if (!targetUrl) return;
+networkConnections.forEach(conn => {
+if (conn.open) conn.send({ type: 'media-sync', url: targetUrl });
+});
+executeTvDisplaySynchronization(targetUrl);
+urlInput.value = "";
+}
+function executeTvDisplaySynchronization(url) {
+const container = document.getElementById('tv-player-container');
+document.getElementById('tv-standby').classList.add('hidden');
+container.innerHTML = "";
+let embedUrl = url;
+if (url.includes('youtube.com')) {
+let videoId = url.split('v=')[1].split('&')[0];
+embedUrl = https://youtube.com{videoId}?autoplay=1&enablejsapi=1&controls=1&rel=0;
+} else if (url.includes('youtu.be/')) {
+let videoId = url.split('youtu.be/')[1].split('?')[0];
+embedUrl = https://youtube.com{videoId}?autoplay=1&enablejsapi=1&controls=1&rel=0;
+}
+const frame = document.createElement('iframe');
+frame.id = "theater-iframe";
+frame.src = embedUrl;
+frame.className = "w-full h-full border-0";
+frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+frame.allowFullscreen = true;
+container.appendChild(frame);
+}
+// Transmit Synchronized Play/Pause Controls over network
+function sendPlaybackSignal(actionType) {
+if (!isHost) return;
+networkConnections.forEach(conn => {
+if (conn.open) conn.send({ type: 'playback-control', action: actionType });
+});
+controlEmbeddedVideoPlayback(actionType);
+}
+function controlEmbeddedVideoPlayback(action) {
+const iframe = document.getElementById('theater-iframe');
+if (!iframe) return;
+// Post messaging command architecture to talk straight to YouTube embed engine internals
+const command = action === 'play' ? 'playVideo' : 'pauseVideo';
+iframe.contentWindow.postMessage(JSON.stringify({ event: 'command', func: command, args: [] }), '*');
+}
+// Messenger chat panel mechanics
+function sendChatMessage() {
+const input = document.getElementById('chat-input');
+const txt = input.value.trim();
+if (!txt) return;
+networkConnections.forEach(conn => {
+if (conn.open) conn.send({ type: 'chat-message', user: myUsername, text: txt, isHostSender: isHost });
+});
+appendChatMessage(You (${myUsername}), txt, isHost);
+input.value = "";
+}
+function appendChatMessage(sender, text, hostFlag) {
+const messages = document.getElementById('chat-messages');
+const bubble = document.createElement('div');
+bubble.className = "bg-[#21140a]/40 border border-amber-600/5 p-2 rounded-xl space-y-0.5";
+// Render Host tags gold and Guests text orange
+const nameColorClass = hostFlag ? "text-amber-400 font-black" : "text-orange-400 font-bold";
+const prefix = hostFlag ? "👑 " : "";
+bubble.innerHTML = <span class="${nameColorClass} text-[11px]">${prefix}${sender}:</span> <p class="text-amber-100/90 leading-relaxed">${text}</p>;
+messages.appendChild(bubble);
+messages.scrollTop = messages.scrollHeight;
+}
+function appendSystemMessage(text) {
+const messages = document.getElementById('chat-messages');
+const sys = document.createElement('div');
+sys.className = "text-[10px] text-amber-500/70 text-center font-mono py-1";
+sys.innerText = text;
+messages.appendChild(sys);
+}
+// Camera / Microphone Toggle Controllers
+async function toggleLocalCamera() {
+if (!localStream) return;
+camState = !camState;
+try {
+// Instantly dynamically insert high quality camera streams into active layout tracks
+if (camState) {
+const videoTrack = await navigator.mediaDevices.getUserMedia({ video: { width: 320, height: 240 } });
+const newVideoTrack = videoTrack.getVideoTracks()[0];
+localStream.addTrack(newVideoTrack);
+document.getElementById('local-video').srcObject = localStream;
+document.getElementById('local-avatar-bg').classList.add('hidden');
+} else {
+const tracks = localStream.getVideoTracks();
+tracks.forEach(t => { t.stop(); localStream.removeTrack(t); });
+document.getElementById('local-avatar-bg').classList.remove('hidden');
+}
+updateLocalUiControls();
+} catch (e) {
+console.error("Camera toggling failure", e);
+camState = false;
+}
+}
+function toggleLocalMicrophone() {
+if (localStream && localStream.getAudioTracks().length > 0) {
+micState = !micState;
+localStream.getAudioTracks()[0].enabled = micState;
+updateLocalUiControls();
+}
+}
+function updateLocalUiControls() {
+const camBtn = document.getElementById('cam-toggle-btn');
+const micBtn = document.getElementById('mic-toggle-btn');
+if (camState) {
+camBtn.className = "bg-amber-500 text-[#1a0f05] font-bold text-xs py-2 px-4 rounded-lg shadow transition cursor-pointer";
+camBtn.innerText = "重新 📹 Cam On";
+} else {
+camBtn.className = "bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-semibold text-xs py-2 px-4 rounded-lg shadow transition cursor-pointer";
+camBtn.innerText = "📹 Cam Off";
+}
+if (micState) {
+micBtn.className = "bg-amber-500 text-[#1a0f05] font-bold text-xs py-2 px-4 rounded-lg shadow transition cursor-pointer";
+micBtn.innerText = "🎙️ Mic On";
+} else {
+micBtn.className = "bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 font-semibold text-xs py-2 px-4 rounded-lg shadow transition cursor-pointer";
+micBtn.innerText = "🎙️ Mic Off";
+}
+}
